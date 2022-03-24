@@ -1,11 +1,98 @@
 import pygame
 import sys
 import random
+import json
 
 Screen_x = 576
 Screen_y = 1024
 pipe_list = []
 can_score = True
+username = ""
+
+
+# 处理排行
+def savescore(username, score):
+    file = open("score.json", 'r')
+
+    try:
+        data = json.load(file)
+    except json.decoder.JSONDecodeError:
+        data = {}
+    if username in data.keys():
+        if data[username] <= score:
+            data[username] = score
+    else:
+        data[username] = score
+    file.close()
+    file = open("score.json", 'w')
+    json.dump(data, file)
+    file.close()
+
+
+def getscore():
+    file = open("score.json", 'r')
+    data = json.load(file)
+    '''
+    
+    print(type(data))
+    print(data)
+    '''
+    sorted_data = sorted(data.items(), key=lambda x: x[1], reverse=True)
+    file.close()
+    if len(sorted_data) >= 3:
+        return sorted_data[:3]
+    else:
+        return sorted_data[0:]
+
+
+def inputUI(screen):
+    font = pygame.font.Font(None, 32)
+    clock = pygame.time.Clock()
+    input_box = pygame.Rect(250, 400, 140, 32)
+    color_inactive = (221, 174, 255)
+    color_active = (251, 73, 255)
+    color = color_inactive
+    active = False
+    text = ''
+    done = False
+
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                # 如果鼠标点到输入框内
+                if input_box.collidepoint(event.pos):
+                    # 激活输入框
+                    active = not active
+                else:
+                    active = False
+                # 随着输入框的激活改变边框的颜色
+                color = color_active if active else color_inactive
+            if event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_RETURN:
+                        return text
+                    elif event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        screen.fill((127, 255, 212))
+        # 生成一个新的surface对象并在上面渲染文本
+        txt_surface = font.render(text, True, color)
+        txt_please = font.render('Input Username:', True, color)
+        # 如果字符串太长 则增加输入框的长度
+        width = max(200, txt_surface.get_width() + 10)
+        input_box.w = width
+        # 绘制文字
+        screen.blit(txt_please, (input_box.x - 180, input_box.y + 5))
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+        # 绘制输入框
+        pygame.draw.rect(screen, color, input_box, 2)
+        # 显示图像
+        pygame.display.flip()
+        clock.tick(30)
 
 
 class Bird(object):
@@ -51,7 +138,6 @@ class Pipeline(object):
         self.pipehigh = [400, 600, 800]
 
     def create_Pipe(self):
-
         random_high = random.choice(self.pipehigh)
         bottom_pipe = self.Surface.get_rect(midtop=(700, random_high))
         top_pipe = self.Surface.get_rect(midbottom=(700, random_high - Screen_y * 1 / 3))
@@ -88,12 +174,28 @@ def pipe_score_check():
 
 
 def score_display():
-    score_surface = game_font.render(f'Score: {int(score)}', True, (255, 255, 255))
-    score_rect = score_surface.get_rect(center=(288, 100))
+    color = (255, 255, 255)
+    score_surface = game_font.render(f'Your Score: {int(score)}', True, (255, 255, 255))
+    score_rect = score_surface.get_rect(center=(288, 60))
     screen.blit(score_surface, score_rect)
+    topscore = getscore()
+    print(topscore)
+    cur_font1 = pygame.font.SysFont("宋体", 80)
+    cur_font2 = pygame.font.SysFont("宋体", 80)
+    text_fmt1 = cur_font1.render('1  ' + '----    0', False, color)
+    text_fmt2 = cur_font2.render('2  ' + '----    0', False, color)
+    text_fmt3 = cur_font2.render('3  ' + '----    0', False, color)
+    print(topscore[0][0])
+    if len(topscore) >= 1:
+        text_fmt1 = cur_font1.render('1  ' + topscore[0][0] + '    ' + str(topscore[0][1]), False, color)
+        if len(topscore) >= 2:
+            text_fmt2 = cur_font2.render('2  ' + topscore[1][0] + '    ' + str(topscore[1][1]), False, color)
+            if len(topscore) >= 3:
+                text_fmt3 = cur_font2.render('3  ' + topscore[2][0] + '    ' + str(topscore[2][1]), False, color)
 
-
-
+    screen.blit(text_fmt1, (Screen_x / 4, 130))
+    screen.blit(text_fmt2, (Screen_x / 4, 200))
+    screen.blit(text_fmt3, (Screen_x / 4, 270))
 
 
 def createMap():
@@ -141,20 +243,6 @@ def checkDead(pipes):
     return Bird.dead
 
 
-def getResult():
-    final_text1 = "Game Over"
-    final_text2 = "Your final score is :  " + str(score)
-    ft1_font = pygame.font.SysFont("Arial", 70)  # 设置第一行文字字体
-    ft1_surf = font.render(final_text1, 1, (242, 3, 36))  # 设置第一行文字颜色
-    ft2_font = pygame.font.SysFont("Arial", 50)  # 设置第二行文字字体
-    ft2_surf = font.render(final_text2, 1, (253, 177, 6))  # 设置第二行文字颜色
-    # 设置两行文字显示位置
-    screen.blit(ft1_surf, [screen.get_width() / 2 - ft1_surf.get_width() / 2, 100])
-    screen.blit(ft2_surf, [screen.get_width() / 2 - ft2_surf.get_width() / 2, 200])
-    # 更新整个待显示的Surface对象到屏幕上
-    pygame.display.flip()
-
-
 if __name__ == '__main__':
 
     pygame.init()
@@ -168,6 +256,9 @@ if __name__ == '__main__':
     pygame.display.set_icon(icon)
 
     clock = pygame.time.Clock()  # 设置时钟
+
+    username = inputUI(screen)
+
     Bird = Bird()  # 实例化鸟类
 
     Pipeline = Pipeline()  # 实例化管道类
@@ -175,7 +266,7 @@ if __name__ == '__main__':
     # 创建pipe的速度
     pygame.time.set_timer(SPAWNPIPE, 1200)
     game_over_surface = pygame.transform.scale2x(pygame.image.load('message.png').convert_alpha())
-    game_over_rect = game_over_surface.get_rect(center=(288, 512))
+    game_over_rect = game_over_surface.get_rect(center=(288, (Screen_y * 3 / 5)))
     background = pygame.image.load("bg_6.png")  # 加载背景图片
     background = pygame.transform.scale2x(background)
     flap_sound = pygame.mixer.Sound('sound/sfx_wing.wav')
@@ -203,18 +294,18 @@ if __name__ == '__main__':
 
             if event.type == SPAWNPIPE:
                 pipe_list.extend(Pipeline.create_Pipe())
-                print(len(pipe_list))
+
         Bird.birdUpdate()
 
         if checkDead(pipe_list):  # 检测小鸟生命状态
 
             screen.blit(game_over_surface, game_over_rect)
             pipe_list.clear()
+            savescore(username, score)
             score_display()
             pygame.display.update()  # 更新显示
 
         else:
-
 
             createMap()  # 创建地图
     pygame.QUIT()  # 退出
